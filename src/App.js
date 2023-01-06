@@ -1,16 +1,37 @@
 import './App.css';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AbilitiesTable from './components/AbilitiesTable';
 import ApperanceGrid from './components/ApperanceGrid';
 import Types from './components/Types';
+import PokemonPaginatedList from './views/PokemonPaginatedList';
+import { useStateValue } from './context/StateProvider';
 
 function App() {
   const [pokemon, setPokemon] = useState()
   const [evolutionLine, setEvolutionLine] = useState([])
   const [searchPokemonName, setSearchPokemonName] = useState('')
+  const [{user}, dispatch] = useStateValue()
+  const [loading, setLoading ]= useState(false)
+
+  useEffect(()=> {
+    dispatch({
+      type: 'SET_USER',
+      user: {
+        name: 'Bruno',
+        id: 1
+      }
+    })
+  }, [])
+  console.log(user)
   
-  const searchPokemon = (name = searchPokemonName) => {
-    fetch(`https://pokeapi.co/api/v2/pokemon/${name.toLowerCase()}`)
+  
+  const searchPokemon = async (name = searchPokemonName) => {
+    if(!name || name === "") {
+      alert("Please type something first")
+      return
+    }
+    setLoading(true)
+    await fetch(`https://pokeapi.co/api/v2/pokemon/${name.toLowerCase()}`)
     .then(res => res.json())
     .then(json => {
       console.log(json)
@@ -19,6 +40,7 @@ function App() {
     .catch(err => {
       console.log(err)
       alert(`Pokemon ${searchPokemonName} doesn't exists`)})
+    setLoading(false)
 
   }
   const submitHandler = (e) =>{
@@ -62,15 +84,20 @@ function App() {
     }
   }, [pokemon])
 
-  const cickEvolutionHandler = (name) => {
+  const cickEvolutionHandler = useCallback((name) => {
     setSearchPokemonName(name)
     searchPokemon(name)
-  }
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    })
+  }, [])
 
-
+  console.log("DEBUG", pokemon)
   return (
     <div className="App">
       <header className="App__conatiner">
+        <div style={{marginBottom: '50px', borderBottom: '2px solid white', width: '100%', display:'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', flexWrap: 'wrap'}}>
         <h1>
           Pokemon
         </h1>
@@ -93,14 +120,16 @@ function App() {
         <p>{pokemon?.name}</p>
           {pokemon ? 
             <>
-              <h3>Avg Stats: {((pokemon.stats.reduce((a,b) => a+b.base_stat,0))/pokemon.stats.length).toFixed(2)}</h3>
-              <h3>Highest stat: {pokemon.stats.reduce((max, stat) => max.base_stat > stat.base_stat ? max.stat.name : stat.stat.name)} {Math.max.apply(Math, pokemon.stats.map(stat => stat.base_stat))}</h3>
+              <h3>Avg Stats: {((pokemon.stats?.reduce((a,b) => a+b.base_stat,0))/pokemon.stats?.length).toFixed(2)}</h3>
+              <h3>Highest stat: {pokemon.stats?.reduce((max, stat) => max.base_stat > stat.base_stat ? max.stat.name : stat.stat.name)} {Math.max.apply(Math, pokemon.stats?.map(stat => stat.base_stat))}</h3>
               <Types types={pokemon.types} />
               <AbilitiesTable abilities={pokemon.abilities}/>
               <ApperanceGrid sprites={pokemon.sprites }/>
             </>
-            : searchPokemonName === '' ? <p>Search by name!</p> :<p>loading...</p>
+            : !loading ? <p>Search by name!</p> :<p>loading...</p>
           }
+          </div>
+          <PokemonPaginatedList clickHandler={cickEvolutionHandler}/>
       </header>
     </div>
   );
